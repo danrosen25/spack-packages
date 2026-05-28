@@ -163,6 +163,7 @@ class Esmf(MakefilePackage, PythonExtension):
 
     def setup_run_environment(self, env: EnvironmentModifications) -> None:
         env.set("ESMFMKFILE", os.path.join(self.prefix.lib, "esmf.mk"))
+        env.set("ESMF_ROOT", self.prefix)
 
 
 class PythonPipBuilder(python.PythonPipBuilder):
@@ -451,6 +452,17 @@ class MakefileBuilder(makefile.MakefileBuilder):
         if self.spec.satisfies("@:8"):
             # https://github.com/esmf-org/esmf/issues/497
             filter_file("-lmpi_cxx", "", os.path.join(self.prefix.lib, "esmf.mk"), string=True)
+
+    @run_after("install")
+    def generate_esmfconfig(self, when="@8"):
+        # Generate the ESMFConfig.cmake file for find_package support in dependent packages
+        from .generate_esmfconfig import generate_esmfconfig
+
+        generate_esmfconfig(
+            esmfmkfile=os.path.join(self.prefix.lib, "esmf.mk"),
+            template=os.path.join(os.path.dirname(__file__), "ESMFConfig.cmake.in"),
+            outputdir=os.path.join(self.prefix.lib, "cmake", "ESMF"),
+        )
 
     def check(self):
         make("check", parallel=False)
